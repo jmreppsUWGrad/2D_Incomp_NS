@@ -5,12 +5,12 @@ REM git init
 set /p branch=What branch to access?
 git checkout %branch%
 echo.
-git pull
-echo.
+REM git pull
+REM echo.
 
-echo. Make changes to desired file(s)
-pause
-echo.
+REM echo. Make changes to desired file(s)
+REM pause
+REM echo.
 :Tracking
 set track=""
 set /p track=What file was changed?
@@ -30,7 +30,7 @@ echo.
 set /p Push=Upload to remote database?
 IF /I %Push%==y (git push -u origin %branch%)
 echo.
-REM echo.
+echo.
 set /p cont=Still working?
 IF /I %cont%==y (GOTO Tracking)
 
