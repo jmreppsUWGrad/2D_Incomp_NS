@@ -43,10 +43,10 @@ import FileClasses
 settings={} # Dictionary of problem settings
 BCs={} # Dictionary of boundary conditions
 # Geometry details
-settings['Length']                  = 1.0
-settings['Width']                   = 1.0
-settings['Nodes_x']                 = 21
-settings['Nodes_y']                 = 21
+settings['Length']                  = 2.0
+settings['Width']                   = 2.0
+settings['Nodes_x']                 = 41
+settings['Nodes_y']                 = 41
 settings['Fluid']                   = 'Air'
 #CP.PropsSI('L','T', 300, 'P', 101325, settings['Fluid'])
 settings['mu']                      = 0.1#CP.PropsSI('V','T', 300, 'P', 101325, settings['Fluid'])
@@ -90,14 +90,15 @@ BCs['bc_south_p']                   = None
 BCs['bc_type_north']                = 'top'
 BCs['bc_north_u']                   = 1
 BCs['bc_north_v']                   = 0
-BCs['bc_north_p']                   = 1
+BCs['bc_north_p']                   = 0
 # numpy.linspace(400, 900, settings['Nodes_x'])
 
 # Initial conditions ????
 
 # Time advancement
 settings['CFL']                     = 0.8
-settings['total_time_steps']        = 100
+settings['dt']                      = 0.001
+settings['total_time_steps']        = 3
 settings['total_time']              = 'None'
 settings['Convergence']             = 0.01
 settings['Max_iterations']          = 1000

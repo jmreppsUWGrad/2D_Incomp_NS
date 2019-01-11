@@ -77,6 +77,7 @@ class TwoDimPlanarSolve():
     def __init__(self, geom_obj, settings, BCs):
         self.Domain=geom_obj # Geometry object
         self.CFL=settings['CFL']
+        self.dt=settings['dt']
         self.time_scheme=settings['Time_Scheme']
 #        self.Nt=settings['total_time_steps']
         self.conv=settings['Convergence']
@@ -121,13 +122,7 @@ class TwoDimPlanarSolve():
             return True
         else:
             return False
-    # Solve
-    """ To do:
-        - flux terms calculator
-        - source terms
-        - RK time advancement (eventually)
-        
-    """
+    
     # Spatial derivatives
     # Calculates for entire domain and accounts for periodicity
     def compute_derivative(self, u, v, dx, dy):
@@ -319,7 +314,7 @@ class TwoDimPlanarSolve():
     def compute_pressure(self,dt,u,v,dudx,dvdy,dvdx,dudy,d2udx,d2vdy,d2vdx,d2udy,dx,dy):
         rhs=numpy.zeros_like(u)
         p_c=self.Domain.p.copy()
-        print(p_c)
+#        print(p_c)
         count=0
         
         rhs =-self.Domain.rho/dt*(dudx+dvdy)
@@ -342,63 +337,67 @@ class TwoDimPlanarSolve():
                         /2/(dy[1:-1,1:-1]**2+dx[1:-1,1:-1]**2)
             
             # Forward/backward difference at boundaries
-            if self.BCs['bc_type_south']=='periodic' or self.BCs['bc_type_north']=='periodic':
-                self.Domain.p[0,1:-1]=((dx[0,1:-1]**2*(p_c[1,1:-1]+p_c[-1,1:-1])\
-                             +dy[0,1:-1]**2*(p_c[0,2:]+p_c[0,:-2]))\
-                             -(dy[0,1:-1]*dx[0,1:-1])**2*rhs[0,1:-1])\
-                            /2/(dy[0,1:-1]**2+dx[0,1:-1]**2)
-                self.Domain.p[-1,1:-1]=((dx[-1,1:-1]**2*(p_c[0,1:-1]+p_c[-2,1:-1])\
-                             +dy[-1,1:-1]**2*(p_c[-1,2:]+p_c[-1,:-2]))\
-                             -(dy[-1,1:-1]*dx[-1,1:-1])**2*rhs[-1,1:-1])\
-                            /2/(dy[-1,1:-1]**2+dx[-1,1:-1]**2)
-            else:
-                self.Domain.p[0,1:-1]=((dx[0,1:-1]**2*(p_c[2,1:-1]-2*p_c[1,1:-1])\
-                             +dy[0,1:-1]**2*(p_c[0,2:]+p_c[0,:-2]))\
-                             -(dy[0,1:-1]*dx[0,1:-1])**2*rhs[0,1:-1])\
-                            /(2*dy[0,1:-1]**2-dx[0,1:-1]**2)
-                self.Domain.p[-1,1:-1]=((dx[-1,1:-1]**2*(p_c[-3,1:-1]-2*p_c[-2,1:-1])\
-                             +dy[-1,1:-1]**2*(p_c[-1,2:]+p_c[-1,:-2]))\
-                             -(dy[-1,1:-1]*dx[-1,1:-1])**2*rhs[-1,1:-1])\
-                            /(2*dy[-1,1:-1]**2-dx[-1,1:-1]**2)
-            if self.BCs['bc_type_left']=='periodic' or self.BCs['bc_type_right']=='periodic':
-                self.Domain.p[1:-1,0]=((dx[1:-1,0]**2*(p_c[2:,0]+p_c[:-2,0])\
-                             +dy[1:-1,0]**2*(p_c[1:-1,1]+p_c[1:-1,-1]))\
-                             -(dy[1:-1,0]*dx[1:-1,0])**2*rhs[1:-1,0])\
-                            /2/(dy[1:-1,0]**2+dx[1:-1,0]**2)
-                self.Domain.p[1:-1,-1]=((dx[1:-1,-1]**2*(p_c[2:,-1]+p_c[:-2,-1])\
-                             +dy[1:-1,-1]**2*(p_c[1:-1,0]+p_c[1:-1,-2]))\
-                             -(dy[1:-1,-1]*dx[1:-1,-1])**2*rhs[1:-1,-1])\
-                            /2/(dy[1:-1,-1]**2+dx[1:-1,-1]**2)
-            else:
-                self.Domain.p[1:-1,0]=((dx[1:-1,0]**2*(p_c[2:,0]+p_c[:-2,0])\
-                             +dy[1:-1,0]**2*(p_c[1:-1,2]-2*p_c[1:-1,1]))\
-                             -(dy[1:-1,0]*dx[1:-1,0])**2*rhs[1:-1,0])\
-                            /(-dy[1:-1,0]**2+2*dx[1:-1,0]**2)
-                self.Domain.p[1:-1,-1]=((dx[1:-1,-1]**2*(p_c[2:,-1]+p_c[:-2,-1])\
-                             +dy[1:-1,-1]**2*(p_c[1:-1,-3]-2*p_c[1:-1,-2]))\
-                             -(dy[1:-1,-1]*dx[1:-1,-1])**2*rhs[1:-1,-1])\
-                            /(-dy[1:-1,-1]**2+2*dx[1:-1,-1]**2)
-            # Corner treatments
-            self.Domain.p[0,0]=((dx[0,0]**2*(p_c[2,0]-2*p_c[1,0])\
-                         +dy[0,0]**2*(p_c[0,2]-2*p_c[0,1]))\
-                         -(dy[0,0]*dx[0,0])**2*rhs[0,0])\
-                        /(2*dy[0,0]**2-dx[0,0]**2)
-            self.Domain.p[-1,0]=((dx[-1,0]**2*(p_c[-3,0]-2*p_c[-2,0])\
-                         +dy[-1,0]**2*(p_c[-1,2]-2*p_c[-1,1]))\
-                         -(dy[-1,0]*dx[-1,0])**2*rhs[-1,0])\
-                        /(2*dy[-1,0]**2-dx[-1,0]**2)
-            self.Domain.p[0,-1]=((dx[0,-1]**2*(p_c[2,-1]-2*p_c[1,-1])\
-                         +dy[0,-1]**2*(p_c[0,-3]-2*p_c[0,-2]))\
-                         -(dy[0,-1]*dx[0,-1])**2*rhs[0,-1])\
-                        /(2*dy[0,-1]**2-dx[0,-1]**2)
-            self.Domain.p[-1,-1]=((dx[-1,-1]**2*(p_c[-3,-1]-2*p_c[-2,-1])\
-                         +dy[-1,-1]**2*(p_c[-1,-3]-2*p_c[-1,-2]))\
-                         -(dy[-1,-1]*dx[-1,-1])**2*rhs[-1,-1])\
-                        /(2*dy[-1,-1]**2-dx[-1,-1]**2)
+#            if self.BCs['bc_type_south']=='periodic' or self.BCs['bc_type_north']=='periodic':
+#                self.Domain.p[0,1:-1]=((dx[0,1:-1]**2*(p_c[1,1:-1]+p_c[-1,1:-1])\
+#                             +dy[0,1:-1]**2*(p_c[0,2:]+p_c[0,:-2]))\
+#                             -(dy[0,1:-1]*dx[0,1:-1])**2*rhs[0,1:-1])\
+#                            /2/(dy[0,1:-1]**2+dx[0,1:-1]**2)
+#                self.Domain.p[-1,1:-1]=((dx[-1,1:-1]**2*(p_c[0,1:-1]+p_c[-2,1:-1])\
+#                             +dy[-1,1:-1]**2*(p_c[-1,2:]+p_c[-1,:-2]))\
+#                             -(dy[-1,1:-1]*dx[-1,1:-1])**2*rhs[-1,1:-1])\
+#                            /2/(dy[-1,1:-1]**2+dx[-1,1:-1]**2)
+#            else:
+#                self.Domain.p[0,1:-1]=((dx[0,1:-1]**2*(p_c[2,1:-1]-2*p_c[1,1:-1])\
+#                             +dy[0,1:-1]**2*(p_c[0,2:]+p_c[0,:-2]))\
+#                             -(dy[0,1:-1]*dx[0,1:-1])**2*rhs[0,1:-1])\
+#                            /(2*dy[0,1:-1]**2-dx[0,1:-1]**2)
+#                self.Domain.p[-1,1:-1]=((dx[-1,1:-1]**2*(p_c[-3,1:-1]-2*p_c[-2,1:-1])\
+#                             +dy[-1,1:-1]**2*(p_c[-1,2:]+p_c[-1,:-2]))\
+#                             -(dy[-1,1:-1]*dx[-1,1:-1])**2*rhs[-1,1:-1])\
+#                            /(2*dy[-1,1:-1]**2-dx[-1,1:-1]**2)
+#            if self.BCs['bc_type_left']=='periodic' or self.BCs['bc_type_right']=='periodic':
+#                self.Domain.p[1:-1,0]=((dx[1:-1,0]**2*(p_c[2:,0]+p_c[:-2,0])\
+#                             +dy[1:-1,0]**2*(p_c[1:-1,1]+p_c[1:-1,-1]))\
+#                             -(dy[1:-1,0]*dx[1:-1,0])**2*rhs[1:-1,0])\
+#                            /2/(dy[1:-1,0]**2+dx[1:-1,0]**2)
+#                self.Domain.p[1:-1,-1]=((dx[1:-1,-1]**2*(p_c[2:,-1]+p_c[:-2,-1])\
+#                             +dy[1:-1,-1]**2*(p_c[1:-1,0]+p_c[1:-1,-2]))\
+#                             -(dy[1:-1,-1]*dx[1:-1,-1])**2*rhs[1:-1,-1])\
+#                            /2/(dy[1:-1,-1]**2+dx[1:-1,-1]**2)
+#            else:
+#                self.Domain.p[1:-1,0]=((dx[1:-1,0]**2*(p_c[2:,0]+p_c[:-2,0])\
+#                             +dy[1:-1,0]**2*(p_c[1:-1,2]-2*p_c[1:-1,1]))\
+#                             -(dy[1:-1,0]*dx[1:-1,0])**2*rhs[1:-1,0])\
+#                            /(-dy[1:-1,0]**2+2*dx[1:-1,0]**2)
+#                self.Domain.p[1:-1,-1]=((dx[1:-1,-1]**2*(p_c[2:,-1]+p_c[:-2,-1])\
+#                             +dy[1:-1,-1]**2*(p_c[1:-1,-3]-2*p_c[1:-1,-2]))\
+#                             -(dy[1:-1,-1]*dx[1:-1,-1])**2*rhs[1:-1,-1])\
+#                            /(-dy[1:-1,-1]**2+2*dx[1:-1,-1]**2)
+#            # Corner treatments
+#            self.Domain.p[0,0]=((dx[0,0]**2*(p_c[2,0]-2*p_c[1,0])\
+#                         +dy[0,0]**2*(p_c[0,2]-2*p_c[0,1]))\
+#                         -(dy[0,0]*dx[0,0])**2*rhs[0,0])\
+#                        /(2*dy[0,0]**2-dx[0,0]**2)
+#            self.Domain.p[-1,0]=((dx[-1,0]**2*(p_c[-3,0]-2*p_c[-2,0])\
+#                         +dy[-1,0]**2*(p_c[-1,2]-2*p_c[-1,1]))\
+#                         -(dy[-1,0]*dx[-1,0])**2*rhs[-1,0])\
+#                        /(2*dy[-1,0]**2-dx[-1,0]**2)
+#            self.Domain.p[0,-1]=((dx[0,-1]**2*(p_c[2,-1]-2*p_c[1,-1])\
+#                         +dy[0,-1]**2*(p_c[0,-3]-2*p_c[0,-2]))\
+#                         -(dy[0,-1]*dx[0,-1])**2*rhs[0,-1])\
+#                        /(2*dy[0,-1]**2-dx[0,-1]**2)
+#            self.Domain.p[-1,-1]=((dx[-1,-1]**2*(p_c[-3,-1]-2*p_c[-2,-1])\
+#                         +dy[-1,-1]**2*(p_c[-1,-3]-2*p_c[-1,-2]))\
+#                         -(dy[-1,-1]*dx[-1,-1])**2*rhs[-1,-1])\
+#                        /(2*dy[-1,-1]**2-dx[-1,-1]**2)
             
             self.Apply_BCs(u,v,self.Domain.p, True)
             if self.CheckConv(p_c, self.Domain.p):
                 return 0
+            elif numpy.amax(self.Domain.p)==0:
+                return 0
+            elif numpy.isnan(numpy.amax(self.Domain.p)):
+                return -1
             p_c=self.Domain.p.copy()
             count+=1
         
@@ -431,10 +430,10 @@ class TwoDimPlanarSolve():
             dudt=[0]*Nstep
             dvdt=[0]*Nstep
             
-        dt=self.getdt()
-        if (numpy.isnan(dt)) or (dt<=0):
-            print '*********Diverging time step***********'
-            return 1, dt
+#        dt=self.getdt()
+#        if (numpy.isnan(dt)) or (dt<=0):
+#            print '*********Diverging time step***********'
+#            return 1, dt
 #        print 'Time step size: %f'%dt
         
         for step in range(Nstep):
@@ -449,10 +448,10 @@ class TwoDimPlanarSolve():
             d2vdx,d2udy=self.compute_derivative(dvdx, dudy, self.dx, self.dy)
             
             # Get pressure field
-            err=self.compute_pressure(dt,u_c,v_c,dudx,dvdy,dvdx,dudy,d2udx,d2vdy,d2vdx,d2udy,self.dx, self.dy)
+            err=self.compute_pressure(self.dt,u_c,v_c,dudx,dvdy,dvdx,dudy,d2udx,d2vdy,d2vdx,d2udy,self.dx, self.dy)
             if err==-1:
                 print '********Pressure field problem**************'
-                return 1, dt
+                return 1, self.dt
             # x-momentum (pressure, flux, shear stress, gravity, pressure gradient)
             dudt[step], dummy =self.compute_derivative(self.Domain.p, numpy.zeros_like(v_c), self.dx, self.dy)
             dudt[step]       *=-1
@@ -476,8 +475,8 @@ class TwoDimPlanarSolve():
             if step < (Nstep - 1):
                 for rk_index in range(step + 1):
                     
-                    u_c+= dt*rk_coeff[step+1][rk_index]*dudt[rk_index]
-                    v_c+= dt*rk_coeff[step+1][rk_index]*dvdt[rk_index]
+                    u_c+= self.dt*rk_coeff[step+1][rk_index]*dudt[rk_index]
+                    v_c+= self.dt*rk_coeff[step+1][rk_index]*dvdt[rk_index]
                     
                 ###################################################################
                 # Apply boundary conditions
@@ -492,8 +491,8 @@ class TwoDimPlanarSolve():
         # Compute new conservative values at new time step
         ###################################################################
         for step in range(Nstep):    
-            self.Domain.u+= dt * rk_substep_fraction[step] * dudt[step]
-            self.Domain.v+= dt * rk_substep_fraction[step] * dvdt[step]
+            self.Domain.u+= self.dt * rk_substep_fraction[step] * dudt[step]
+            self.Domain.v+= self.dt * rk_substep_fraction[step] * dvdt[step]
             
         ###################################################################
         # Apply boundary conditions
@@ -507,7 +506,7 @@ class TwoDimPlanarSolve():
         if (numpy.isnan(numpy.amax(self.Domain.u))) or \
             (numpy.isnan(numpy.amax(self.Domain.v))):
             print '**************Divergence detected****************'
-            return 1, dt
+            return 1, self.dt
         
         ###################################################################
         # Output data to file?????
@@ -515,4 +514,4 @@ class TwoDimPlanarSolve():
         
         
         
-        return 0, dt
+        return 0, self.dt
