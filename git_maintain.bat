@@ -11,6 +11,7 @@ REM echo.
 REM echo. Make changes to desired file(s)
 REM pause
 REM echo.
+git status
 :Tracking
 set track=""
 set /p track=What file was changed?
@@ -22,7 +23,12 @@ GOTO Tracking
 git status
 echo.
 set /p cont=Are the modified files displayed correctly?
-IF /I %cont%==n (GOTO Tracking)
+IF /I %cont%==y (GOTO Commit)
+set /p cont=Reset HEAD?
+IF /I %cont%==y (git reset HEAD)
+GOTO Tracking
+
+:Commit
 set /p msg=Commit message (Use " "):
 git commit -m %msg%
 echo.
